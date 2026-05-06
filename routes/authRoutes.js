@@ -43,6 +43,32 @@ router.post("/login", async (req, res) => {
   }
 });
 
+  // 👤 GET USER BY ID
+router.get("/user/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found ❌"
+      });
+    }
+
+    res.json({
+      message: "User fetched successfully ✅",
+      user
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching user ❌",
+      error: error.message
+    });
+  }
+});
+
 
 // 📝 REGISTER
 router.post("/user", async (req, res) => {

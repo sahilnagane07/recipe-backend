@@ -1,18 +1,23 @@
 const express = require("express");
 const router = express.Router();
+
 const Recipe = require("../models/Recipe");
 
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+// ======================================================
 // ✅ Ensure uploads folder exists
+// ======================================================
 const uploadPath = "uploads/";
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath);
 }
 
-// 📁 Multer storage config
+// ======================================================
+// 📁 Multer config
+// ======================================================
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadPath);
@@ -24,16 +29,15 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-
 // ======================================================
-// ✅ GET ALL RECIPES (NEW API)
+// ✅ GET ALL RECIPES
 // ======================================================
 router.get("/recipes", async (req, res) => {
   try {
     const recipes = await Recipe.find()
       .populate("category", "name")
       .populate("user", "name email")
-      .sort({ createdAt: -1 }); // latest first
+      .sort({ createdAt: -1 });
 
     res.json({
       count: recipes.length,
@@ -42,12 +46,11 @@ router.get("/recipes", async (req, res) => {
 
   } catch (error) {
     res.status(500).json({
-      message: "Error fetching all recipes ❌",
+      message: "Error fetching recipes ❌",
       error: error.message
     });
   }
 });
-
 
 // ======================================================
 // 🔍 GET RECIPES BY USER
@@ -74,35 +77,77 @@ router.get("/recipes/user/:userId", async (req, res) => {
   }
 });
 
-
 // ======================================================
-// ➕ CREATE RECIPE WITH IMAGE UPLOAD
+// ➕ CREATE RECIPE
 // ======================================================
 router.post("/recipes", upload.single("image"), async (req, res) => {
   try {
     const { title, ingredients, instructions, category, user } = req.body;
 
-    // ✅ Validation
+    // ✅ Basic validation
     if (!title || !ingredients || !instructions || !category || !user) {
       return res.status(400).json({
         message: "All fields are required ❌"
       });
     }
 
-    // ✅ Convert ingredients safely
+    // ======================================================
+    // ✅ INGREDIENTS PARSING (textarea friendly)
+    // ======================================================
     let parsedIngredients = [];
-    try {
-      parsedIngredients = JSON.parse(ingredients);
-    } catch {
-      parsedIngredients = ingredients.split(",").map(i => i.trim());
+
+    if (Array.isArray(ingredients)) {
+      parsedIngredients = ingredients;
+    } else if (typeof ingredients === "string") {
+      try {
+        parsedIngredients = JSON.parse(ingredients);
+      } catch {
+        parsedIngredients = ingredients
+          .replace(/\r/g, "")
+          .split(/\n|,/) // newline OR comma
+          .map(i => i.trim())
+          .filter(i => i.length > 0);
+      }
     }
 
-    // ✅ Convert instructions → ARRAY
-    const steps = instructions
-      .split(/\r?\n|\d+\)/)
-      .map(step => step.trim())
-      .filter(step => step !== "");
+    // ======================================================
+    // ✅ INSTRUCTIONS PARSING (textarea friendly)
+    // ======================================================
+    let steps = [];
 
+    if (Array.isArray(instructions)) {
+      steps = instructions;
+    } else if (typeof instructions === "string") {
+      steps = instructions
+        .replace(/\r/g, "")
+        .split(/\n|\d+\.\s*/) // supports "1. step"
+        .map(step => step.trim())
+        .filter(step => step.length > 0);
+    }
+
+    // ======================================================
+    // ✅ EXTRA VALIDATION
+    // ======================================================
+    if (parsedIngredients.length === 0 || steps.length === 0) {
+      return res.status(400).json({
+        message: "Ingredients & Instructions cannot be empty ❌"
+      });
+    }
+
+    // ======================================================
+    // 🔍 DEBUG (optional)
+    // ======================================================
+    console.log("📦 FINAL DATA:", {
+      title,
+      parsedIngredients,
+      steps,
+      category,
+      user
+    });
+
+    // ======================================================
+    // ✅ CREATE RECIPE
+    // ======================================================
     const recipe = new Recipe({
       title,
       ingredients: parsedIngredients,
@@ -115,11 +160,13 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
     await recipe.save();
 
     res.status(201).json({
-      message: "Recipe created ✅",
+      message: "Recipe created successfully ✅",
       recipe
     });
 
   } catch (error) {
+    console.error("❌ Create Recipe Error:", error);
+
     res.status(500).json({
       message: "Error creating recipe ❌",
       error: error.message
@@ -127,4 +174,5 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
   }
 });
 
+// ======================================================
 module.exports = router;

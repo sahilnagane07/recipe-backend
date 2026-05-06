@@ -5,26 +5,35 @@ const recipeSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+
+  // ✅ already correct
   ingredients: [
     {
       type: String
     }
   ],
-  instructions: {
-    type: String,
-    required: true
-  },
+
+  // 🔥 FIX HERE
+  instructions: [
+    {
+      type: String
+    }
+  ],
+
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category"
   },
+
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   },
+
   imageUrl: {
     type: String
   }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model("Recipe", recipeSchema);
