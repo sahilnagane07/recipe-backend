@@ -3,27 +3,19 @@ const router = express.Router();
 
 const Recipe = require("../models/Recipe");
 
+// ✅ Cloudinary + Multer
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+const cloudinary = require("../config/cloudinary");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
 // ======================================================
-// ✅ Ensure uploads folder exists
+// ☁️ Cloudinary Storage Config
 // ======================================================
-const uploadPath = "uploads/";
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath);
-}
-
-// ======================================================
-// 📁 Multer config
-// ======================================================
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "recipes",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"]
   }
 });
 
@@ -84,7 +76,7 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
   try {
     const { title, ingredients, instructions, category, user } = req.body;
 
-    // ✅ Basic validation
+    // ✅ Validation
     if (!title || !ingredients || !instructions || !category || !user) {
       return res.status(400).json({
         message: "All fields are required ❌"
@@ -92,7 +84,7 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
     }
 
     // ======================================================
-    // ✅ INGREDIENTS PARSING (textarea friendly)
+    // ✅ INGREDIENTS PARSING
     // ======================================================
     let parsedIngredients = [];
 
@@ -104,14 +96,14 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
       } catch {
         parsedIngredients = ingredients
           .replace(/\r/g, "")
-          .split(/\n|,/) // newline OR comma
+          .split(/\n|,/)
           .map(i => i.trim())
           .filter(i => i.length > 0);
       }
     }
 
     // ======================================================
-    // ✅ INSTRUCTIONS PARSING (textarea friendly)
+    // ✅ INSTRUCTIONS PARSING
     // ======================================================
     let steps = [];
 
@@ -120,30 +112,10 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
     } else if (typeof instructions === "string") {
       steps = instructions
         .replace(/\r/g, "")
-        .split(/\n|\d+\.\s*/) // supports "1. step"
+        .split(/\n|\d+\.\s*/)
         .map(step => step.trim())
         .filter(step => step.length > 0);
     }
-
-    // ======================================================
-    // ✅ EXTRA VALIDATION
-    // ======================================================
-    if (parsedIngredients.length === 0 || steps.length === 0) {
-      return res.status(400).json({
-        message: "Ingredients & Instructions cannot be empty ❌"
-      });
-    }
-
-    // ======================================================
-    // 🔍 DEBUG (optional)
-    // ======================================================
-    console.log("📦 FINAL DATA:", {
-      title,
-      parsedIngredients,
-      steps,
-      category,
-      user
-    });
 
     // ======================================================
     // ✅ CREATE RECIPE
@@ -154,7 +126,9 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
       instructions: steps,
       category,
       user,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : ""
+
+      // ☁️ Cloudinary image URL
+      imageUrl: req.file ? req.file.path : ""
     });
 
     await recipe.save();
