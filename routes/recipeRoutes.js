@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const Recipe = require("../models/Recipe");
+const Category = require("../models/Category");
 
 // ✅ Cloudinary + Multer
 const multer = require("multer");
@@ -51,6 +52,48 @@ router.get("/recipes", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Error fetching recipes ❌",
+      error: error.message
+    });
+  }
+});
+
+// ======================================================
+// ✅ GET RECIPES BY CATEGORY NAME
+// Example:
+// /api/recipes/category/Chinese
+// ======================================================
+router.get("/recipes/category/:categoryName", async (req, res) => {
+  try {
+    const { categoryName } = req.params;
+
+    // ✅ Find category first
+    const category = await Category.findOne({
+      name: { $regex: new RegExp(categoryName, "i") }
+    });
+
+    if (!category) {
+      return res.status(404).json({
+        message: "Category not found ❌"
+      });
+    }
+
+    // ✅ Get recipes of category
+    const recipes = await Recipe.find({
+      category: category._id
+    })
+      .populate("category", "name")
+      .populate("user", "name email")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      category: category.name,
+      count: recipes.length,
+      recipes
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching category recipes ❌",
       error: error.message
     });
   }
