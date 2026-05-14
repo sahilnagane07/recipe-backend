@@ -6,19 +6,26 @@ const recipeSchema = new mongoose.Schema({
     required: true
   },
 
-  // ✅ already correct
+  // ✅ Ingredients
   ingredients: [
     {
       type: String
     }
   ],
 
-  // 🔥 FIX HERE
+  // ✅ Instructions
   instructions: [
     {
       type: String
     }
   ],
+
+  // ✅ Price
+  price: {
+    type: Number,
+    required: false,
+    default: 0
+  },
 
   category: {
     type: mongoose.Schema.Types.ObjectId,

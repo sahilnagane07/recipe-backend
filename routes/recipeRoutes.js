@@ -86,7 +86,14 @@ router.get("/recipes/user/:userId", async (req, res) => {
 // ======================================================
 router.post("/recipes", upload.single("image"), async (req, res) => {
   try {
-    const { title, ingredients, instructions, category, user } = req.body;
+    const {
+      title,
+      ingredients,
+      instructions,
+      category,
+      user,
+      price
+    } = req.body;
 
     // ✅ Validation
     if (!title || !ingredients || !instructions || !category || !user) {
@@ -136,6 +143,10 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
       title,
       ingredients: parsedIngredients,
       instructions: steps,
+
+      // ✅ PRICE
+      price: price || 0,
+
       category,
       user,
 
