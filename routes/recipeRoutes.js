@@ -214,5 +214,41 @@ router.post("/recipes", upload.single("image"), async (req, res) => {
   }
 });
 
+
+// ======================================================
+// ❌ DELETE RECIPE BY ID
+// Example:
+// DELETE /api/recipes/68273627shsh
+// ======================================================
+router.delete("/recipes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // ✅ Find recipe
+    const recipe = await Recipe.findById(id);
+
+    if (!recipe) {
+      return res.status(404).json({
+        message: "Recipe not found ❌"
+      });
+    }
+
+    // ✅ Delete recipe
+    await Recipe.findByIdAndDelete(id);
+
+    res.json({
+      message: "Recipe deleted successfully ✅"
+    });
+
+  } catch (error) {
+    console.error("❌ Delete Recipe Error:", error);
+
+    res.status(500).json({
+      message: "Error deleting recipe ❌",
+      error: error.message
+    });
+  }
+});
+
 // ======================================================
 module.exports = router;
